@@ -500,6 +500,7 @@
         const SCALE = 1;
         const STAR = ["#9db0e8", "#d7e0ff", "#fff6d2", "#cfd6f5", "#ffffff", "#b8c4f0"];
         let w = 0, h = 0, stars = [], meteors = [], last = 0, spawnAt = 0, skyGrad = null;
+        let ufo = null, ufoAt = 0, ufoLastX = -999, ufoLastY = -999;
 
         function rand(n) { return Math.random() * n; }
         function irand(n) { return (Math.random() * n) | 0; }
@@ -612,6 +613,74 @@
           return t + 900 + rand(2600);
         }
 
+        function armUfo(t, first) {
+          ufo = null;
+          ufoAt = t + (first ? 3500 + rand(8000) : 10000 + rand(28000));
+        }
+
+        function spawnUfo() {
+          const pad = 36;
+          let x, y, n = 0;
+          do {
+            x = pad + rand(w - pad * 2);
+            y = pad + rand(h * 0.7);
+            n++;
+          } while (n < 10 && Math.hypot(x - ufoLastX, y - ufoLastY) < Math.min(w, h) * 0.38);
+          ufoLastX = x;
+          ufoLastY = y;
+          const dir = Math.random() < 0.5 ? -1 : 1;
+          const dart = Math.random() < 0.4;
+          ufo = {
+            x, y,
+            vx: dir * (dart ? 1.6 + rand(1.4) : 0.55 + rand(0.7)),
+            vy: (Math.random() - 0.5) * (dart ? 0.55 : 0.28),
+            phase: rand(Math.PI * 2),
+            zigAmp: 6 + rand(16),
+            zigFreq: 0.07 + rand(0.14),
+            life: dart ? 48 + irand(40) : 70 + irand(80),
+            fade: 0,
+            size: 4.2 + rand(3.2),
+            alpha: 0.16 + rand(0.18),
+            tilt: (Math.random() - 0.5) * 0.25,
+          };
+        }
+
+        function drawUfo() {
+          if (!ufo) return;
+          if (ufo.life > 16) ufo.fade = Math.min(1, ufo.fade + 0.07);
+          else ufo.fade = Math.max(0, ufo.fade - 0.08);
+          ufo.phase += ufo.zigFreq;
+          ufo.x += ufo.vx;
+          ufo.y += ufo.vy + Math.sin(ufo.phase) * ufo.zigAmp * 0.11;
+          ufo.life--;
+          const a = ufo.alpha * ufo.fade;
+          if (a < 0.01) return;
+          const x = ufo.x, y = ufo.y, s = ufo.size;
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(ufo.tilt + Math.sin(ufo.phase * 0.5) * 0.06);
+          ctx.globalAlpha = a * 0.22;
+          ctx.fillStyle = "#8ea0b4";
+          ctx.beginPath();
+          ctx.ellipse(0, 1, s * 1.7, s * 0.7, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = a;
+          ctx.fillStyle = "#b7c2cc";
+          ctx.beginPath();
+          ctx.ellipse(0, 0, s * 1.45, s * 0.38, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = "#6d7886";
+          ctx.beginPath();
+          ctx.ellipse(0, -s * 0.22, s * 0.48, s * 0.28, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = a * 0.35;
+          ctx.fillStyle = "#cfe0f0";
+          ctx.fillRect(-s * 0.9, -0.4, 1.2, 1.2);
+          ctx.fillRect(s * 0.55, -0.4, 1.2, 1.2);
+          ctx.restore();
+          ctx.globalAlpha = 1;
+        }
+
         function tick(t) {
           requestAnimationFrame(tick);
           if (t - last < 33) return;
@@ -679,11 +748,16 @@
             if (m.fade < 0.06 || m.life < 0 || m.y > h + 28 || m.x < -40 || m.x > w + 40)
               meteors.splice(i, 1);
           }
+          if (!ufo && t > ufoAt) spawnUfo();
+          drawUfo();
+          if (ufo && (ufo.life < 0 || ufo.fade <= 0 || ufo.x < -50 || ufo.x > w + 50 || ufo.y < -40 || ufo.y > h + 40))
+            armUfo(t);
         }
 
         resize();
         spawnMeteor();
         spawnAt = 400 + rand(900);
+        armUfo(0, true);
         window.addEventListener("resize", resize, { passive: true });
         requestAnimationFrame(tick);
       })();
