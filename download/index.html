@@ -618,118 +618,139 @@
         }
 
         function spawnUfo() {
-          const pad = 36;
+          const pad = 40;
           let x, y, n = 0;
           do {
             x = pad + rand(w - pad * 2);
-            y = pad + rand(h * 0.7);
+            y = pad + rand(h * 0.62);
             n++;
           } while (n < 10 && Math.hypot(x - ufoLastX, y - ufoLastY) < Math.min(w, h) * 0.38);
           ufoLastX = x;
           ufoLastY = y;
           const dir = Math.random() < 0.5 ? -1 : 1;
-          const dart = Math.random() < 0.4;
+          const dart = Math.random() < 0.35;
           ufo = {
             x, y,
-            vx: dir * (dart ? 1.6 + rand(1.4) : 0.55 + rand(0.7)),
-            vy: (Math.random() - 0.5) * (dart ? 0.55 : 0.28),
+            vx: dir * (dart ? 1.5 + rand(1.2) : 0.5 + rand(0.65)),
+            vy: (Math.random() - 0.5) * (dart ? 0.45 : 0.22),
             phase: rand(Math.PI * 2),
-            zigAmp: 6 + rand(16),
-            zigFreq: 0.07 + rand(0.14),
-            life: dart ? 48 + irand(40) : 70 + irand(80),
+            zigAmp: 5 + rand(14),
+            zigFreq: 0.06 + rand(0.12),
+            life: dart ? 55 + irand(45) : 80 + irand(90),
             fade: 0,
-            size: 4.2 + rand(3.2),
-            alpha: 0.28 + rand(0.16),
-            tilt: (Math.random() - 0.5) * 0.25,
+            size: 7.2 + rand(3.4),
+            alpha: 0.94,
+            tilt: (Math.random() - 0.5) * 0.18,
             age: 0,
-            beam: Math.random() < 0.72,
-            beamAt: 16 + irand(22),
-            beamLen: 12 + irand(16),
+            beamOn: false,
+            beamUntil: 0,
+            nextBeam: 12 + irand(28),
           };
         }
 
         function drawUfo() {
           if (!ufo) return;
-          if (ufo.life > 16) ufo.fade = Math.min(1, ufo.fade + 0.07);
-          else ufo.fade = Math.max(0, ufo.fade - 0.08);
+          if (ufo.life > 18) ufo.fade = Math.min(1, ufo.fade + 0.08);
+          else ufo.fade = Math.max(0, ufo.fade - 0.07);
           ufo.phase += ufo.zigFreq;
           ufo.x += ufo.vx;
-          ufo.y += ufo.vy + Math.sin(ufo.phase) * ufo.zigAmp * 0.11;
+          ufo.y += ufo.vy + Math.sin(ufo.phase) * ufo.zigAmp * 0.1;
           ufo.life--;
           ufo.age++;
           const a = ufo.alpha * ufo.fade;
           if (a < 0.01) return;
+          if (!ufo.beamOn && ufo.fade > 0.7 && ufo.life > 22 && ufo.age >= ufo.nextBeam) {
+            ufo.beamOn = Math.random() < 0.7;
+            ufo.beamUntil = ufo.age + 10 + irand(20);
+            ufo.nextBeam = ufo.beamUntil + 16 + irand(48);
+          }
+          if (ufo.beamOn && ufo.age >= ufo.beamUntil) ufo.beamOn = false;
+          const beaming = ufo.beamOn && ufo.fade > 0.55;
+          const pulse = beaming ? 0.5 + 0.5 * Math.abs(Math.sin(ufo.age * 0.28)) : 0;
           const s = ufo.size;
-          const beaming =
-            ufo.beam &&
-            ufo.age >= ufo.beamAt &&
-            ufo.age < ufo.beamAt + ufo.beamLen &&
-            ufo.fade > 0.55;
-          const pulse = beaming
-            ? 0.55 + 0.45 * Math.abs(Math.sin(ufo.age * 0.35))
-            : 0;
           ctx.save();
           ctx.translate(ufo.x, ufo.y);
-          ctx.rotate(ufo.tilt + Math.sin(ufo.phase * 0.5) * 0.06);
+          ctx.rotate(ufo.tilt + Math.sin(ufo.phase * 0.45) * 0.05);
           if (beaming) {
-            const len = s * (9 + 6 * pulse);
-            const half = s * (1.15 + 0.7 * pulse);
-            const beam = ctx.createLinearGradient(0, s * 0.2, 0, len);
-            beam.addColorStop(0, "rgba(140,255,170," + (0.28 * pulse) + ")");
-            beam.addColorStop(0.35, "rgba(70,210,120," + (0.12 * pulse) + ")");
-            beam.addColorStop(1, "rgba(40,160,90,0)");
+            const len = s * (11 + 7 * pulse);
+            const half = s * (1.35 + 0.85 * pulse);
+            const beam = ctx.createLinearGradient(0, s * 0.35, 0, len);
+            beam.addColorStop(0, "rgba(170,255,190," + (0.42 * pulse) + ")");
+            beam.addColorStop(0.2, "rgba(90,230,140," + (0.22 * pulse) + ")");
+            beam.addColorStop(0.65, "rgba(50,180,100," + (0.08 * pulse) + ")");
+            beam.addColorStop(1, "rgba(30,140,80,0)");
             ctx.fillStyle = beam;
             ctx.beginPath();
-            ctx.moveTo(-s * 0.22, s * 0.15);
-            ctx.lineTo(s * 0.22, s * 0.15);
+            ctx.moveTo(-s * 0.18, s * 0.32);
+            ctx.lineTo(s * 0.18, s * 0.32);
             ctx.lineTo(half, len);
             ctx.lineTo(-half, len);
             ctx.closePath();
             ctx.fill();
-            ctx.globalAlpha = a * 0.45 * pulse;
-            ctx.fillStyle = "#8dffb0";
-            ctx.beginPath();
-            ctx.ellipse(0, s * 0.22, s * 0.28, s * 0.12, 0, 0, Math.PI * 2);
-            ctx.fill();
           }
-          ctx.globalAlpha = a * 0.28;
-          ctx.fillStyle = "#4a5560";
+          ctx.globalAlpha = a * 0.35;
+          ctx.fillStyle = "#1a1e24";
           ctx.beginPath();
-          ctx.ellipse(0, 1.2, s * 1.75, s * 0.72, 0, 0, Math.PI * 2);
+          ctx.ellipse(0, s * 0.55, s * 1.5, s * 0.28, 0, 0, Math.PI * 2);
           ctx.fill();
-          const hull = ctx.createLinearGradient(-s * 1.5, -s * 0.4, s * 1.5, s * 0.5);
-          hull.addColorStop(0, "#3a4148");
-          hull.addColorStop(0.28, "#8b96a0");
-          hull.addColorStop(0.5, "#d5dde4");
-          hull.addColorStop(0.72, "#6f7a84");
-          hull.addColorStop(1, "#2c3238");
+          const lower = ctx.createLinearGradient(0, 0, 0, s * 0.7);
+          lower.addColorStop(0, "#6a737c");
+          lower.addColorStop(1, "#24292e");
           ctx.globalAlpha = a;
+          ctx.fillStyle = lower;
+          ctx.beginPath();
+          ctx.ellipse(0, s * 0.18, s * 1.55, s * 0.42, 0, 0, Math.PI * 2);
+          ctx.fill();
+          const hull = ctx.createLinearGradient(-s * 2, -s * 0.35, s * 2, s * 0.45);
+          hull.addColorStop(0, "#2b3138");
+          hull.addColorStop(0.22, "#8f9aa6");
+          hull.addColorStop(0.48, "#eef3f8");
+          hull.addColorStop(0.62, "#9aa6b2");
+          hull.addColorStop(0.82, "#4a545e");
+          hull.addColorStop(1, "#1c2126");
           ctx.fillStyle = hull;
           ctx.beginPath();
-          ctx.ellipse(0, 0, s * 1.5, s * 0.4, 0, 0, Math.PI * 2);
+          ctx.ellipse(0, 0, s * 1.95, s * 0.48, 0, 0, Math.PI * 2);
           ctx.fill();
-          ctx.strokeStyle = "rgba(230,236,242,0.45)";
-          ctx.lineWidth = 0.7;
+          ctx.strokeStyle = "rgba(255,255,255,0.55)";
+          ctx.lineWidth = 1.1;
           ctx.beginPath();
-          ctx.ellipse(0, -s * 0.08, s * 1.28, s * 0.18, 0, 0, Math.PI * 2);
+          ctx.ellipse(0, -s * 0.06, s * 1.55, s * 0.2, 0, 0, Math.PI * 2);
           ctx.stroke();
-          const dome = ctx.createLinearGradient(0, -s * 0.55, 0, s * 0.05);
-          dome.addColorStop(0, "#e8eef4");
-          dome.addColorStop(0.45, "#8a96a2");
-          dome.addColorStop(1, "#3e464e");
+          ctx.strokeStyle = "rgba(20,24,28,0.55)";
+          ctx.lineWidth = 0.8;
+          ctx.beginPath();
+          ctx.ellipse(0, s * 0.12, s * 1.62, s * 0.22, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          const dome = ctx.createLinearGradient(-s * 0.2, -s * 0.85, s * 0.4, s * 0.1);
+          dome.addColorStop(0, "#f5f8fb");
+          dome.addColorStop(0.35, "#b7c2cc");
+          dome.addColorStop(0.7, "#5c6772");
+          dome.addColorStop(1, "#2a3138");
           ctx.fillStyle = dome;
           ctx.beginPath();
-          ctx.ellipse(0, -s * 0.2, s * 0.5, s * 0.3, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.globalAlpha = a * 0.55;
-          ctx.fillStyle = "#f4f7fa";
-          ctx.beginPath();
-          ctx.ellipse(-s * 0.12, -s * 0.32, s * 0.16, s * 0.08, -0.4, 0, Math.PI * 2);
+          ctx.ellipse(0, -s * 0.32, s * 0.72, s * 0.5, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.globalAlpha = a * 0.7;
-          ctx.fillStyle = beaming ? "#7dff9a" : "#5a636c";
+          ctx.fillStyle = "#ffffff";
           ctx.beginPath();
-          ctx.ellipse(0, s * 0.18, s * 0.22, s * 0.1, 0, 0, Math.PI * 2);
+          ctx.ellipse(-s * 0.18, -s * 0.48, s * 0.22, s * 0.12, -0.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          const lights = 7;
+          for (let i = 0; i < lights; i++) {
+            const t = (i + 0.5) / lights;
+            const lx = Math.cos(Math.PI * t) * s * 1.35;
+            const ly = Math.sin(Math.PI * t) * s * 0.22 + s * 0.06;
+            ctx.globalAlpha = a * (0.55 + 0.45 * Math.abs(Math.sin(ufo.age * 0.2 + i)));
+            ctx.fillStyle = beaming ? "#9dffb8" : "#d7dee6";
+            ctx.beginPath();
+            ctx.ellipse(lx, ly, s * 0.09, s * 0.06, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = a;
+          ctx.fillStyle = beaming ? "#8affaa" : "#3a424a";
+          ctx.beginPath();
+          ctx.ellipse(0, s * 0.28, s * 0.28, s * 0.12, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
           ctx.globalAlpha = 1;
